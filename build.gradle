@@ -1,0 +1,83 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(8)
+    }
+}
+
+group 'io.github.sdxqw.lwjgllegacy'
+version '1.0-SNAPSHOT'
+def mainClass = "io.github.sdxqw.lwjgllegacy.Main"
+
+import org.gradle.internal.os.OperatingSystem
+
+switch (OperatingSystem.current()) {
+    case OperatingSystem.LINUX:
+        project.ext.osName = "linux";
+        break;
+    case OperatingSystem.MAC_OS:
+        project.ext.osName = "macosx";
+        break;
+    case OperatingSystem.WINDOWS:
+        project.ext.osName = "windows";
+        break;
+}
+
+application.applicationName = "Lwjgl"
+application {
+    mainClassName = "$mainClass"
+    applicationDefaultJvmArgs = ["-Djava.library.path=natives/lwjgl/$osName"]
+}
+
+repositories {
+    mavenCentral()
+}
+
+configurations {
+    lwjgl
+    implementation.extendsFrom lwjgl
+    runtime.extendsFrom lwjgl
+
+    implementation {
+        canBeResolved = true
+    }
+}
+
+dependencies {
+    lwjgl group: 'org.lwjgl.lwjgl', name: 'lwjgl', version: '2.9.3'
+    lwjgl group: 'org.lwjgl.lwjgl', name: 'lwjgl_util', version: '2.9.3'
+    implementation fileTree(dir: 'libs')
+    implementation 'org.projectlombok:lombok:1.18.24'
+    annotationProcessor 'org.projectlombok:lombok:1.18.24'
+}
+
+processResources {
+    inputs.files "src/main/resources"
+    outputs.dir "build/classes/main"
+    copy {
+        from("src/main/resources")
+        into("build/classes/main")
+    }
+}
+
+jar {
+    dependsOn configurations.implementation
+    dependsOn configurations.annotationProcessor
+
+    from {
+        configurations.lwjgl.collect {
+            it.isDirectory() ? it : zipTree(it)
+        }
+    }
+
+    manifest {
+        attributes(
+                'Class-Path': configurations.lwjgl.collect { it.getName() }.join(' '),
+                'Main-Class': "$mainClass"
+        )
+    }
+}
